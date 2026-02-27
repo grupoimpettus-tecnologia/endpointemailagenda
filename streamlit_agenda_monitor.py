@@ -156,13 +156,36 @@ def process_emails() -> int:
                 subject = decode_mime_header(msg.get("Subject", ""))
                 body = extract_email_body(msg)
 
+                # Validação de domínio: apenas @grupoimpettus.com.br
+                if not from_addr.lower().endswith("@grupoimpettus.com.br"):
+                    add_log(f"Rejeitado (domínio externo): {from_addr}", "warning")
+                    mail.store(msg_id, "+FLAGS", "\\Seen")
+                    st.session_state.total_rejected += 1
+                    st.session_state.total_processed += 1
+                    processed += 1
+                    continue
+
                 add_log(f"Processando: \"{subject}\" de {from_addr}", "info")
+
+                # Extrair CC e To para capturar participantes em cópia
+                cc_raw = msg.get("Cc", "") or ""
+                cc_addrs = [parseaddr(addr.strip())[1] for addr in cc_raw.split(",") if addr.strip() and parseaddr(addr.strip())[1]]
+
+                to_raw = msg.get("To", "") or ""
+                to_addrs = [parseaddr(addr.strip())[1] for addr in to_raw.split(",") if addr.strip() and parseaddr(addr.strip())[1]]
+
+                if cc_addrs:
+                    add_log(f"  CC detectados: {', '.join(cc_addrs)}", "info")
+                if len(to_addrs) > 1:
+                    add_log(f"  To detectados: {', '.join(to_addrs)}", "info")
 
                 # Enviar ao endpoint
                 payload = {
                     "from": from_addr or from_display,
                     "subject": subject,
                     "body": body,
+                    "cc": cc_addrs,
+                    "to": to_addrs,
                 }
 
                 response = requests.post(
@@ -188,6 +211,9 @@ def process_emails() -> int:
                     st.session_state.total_conflict += 1
                 elif result.get("reason") in ("missing_date_time", "missing_room"):
                     add_log(f"Rejeitado ({result.get('reason')}): \"{subject}\"", "warning")
+                    st.session_state.total_rejected += 1
+                elif result.get("reason") == "unauthorized_domain":
+                    add_log(f"Rejeitado (domínio não autorizado): \"{subject}\" de {from_addr}", "warning")
                     st.session_state.total_rejected += 1
                 else:
                     error_msg = result.get("error", f"HTTP {response.status_code}")
