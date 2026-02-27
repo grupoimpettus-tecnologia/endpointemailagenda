@@ -46,7 +46,9 @@ if "total_error" not in st.session_state:
 if "last_check" not in st.session_state:
     st.session_state.last_check = None
 if "imap_status" not in st.session_state:
-    st.session_state.imap_status = "desconectado"
+    st.session_state.imap_status = "verificando..."
+if "initialized" not in st.session_state:
+    st.session_state.initialized = False
 
 
 def add_log(message: str, level: str = "info"):
@@ -254,6 +256,11 @@ st.set_page_config(
     page_icon="📧",
     layout="wide",
 )
+
+# Auto-testar conexão IMAP ao carregar a página
+if not st.session_state.initialized:
+    st.session_state.initialized = True
+    test_imap_connection()
 
 st.title("📧 Agenda Impettus - Monitor de E-mails")
 st.caption("Monitora a caixa de entrada e encaminha e-mails de agendamento para o sistema.")
