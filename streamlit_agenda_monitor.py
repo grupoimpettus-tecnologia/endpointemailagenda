@@ -32,7 +32,7 @@ ENDPOINT_URL = "https://rmkrsuwncqxsavykgrad.supabase.co/functions/v1/process-in
 if "logs" not in st.session_state:
     st.session_state.logs = []
 if "is_running" not in st.session_state:
-    st.session_state.is_running = False
+    st.session_state.is_running = True
 if "total_processed" not in st.session_state:
     st.session_state.total_processed = 0
 if "total_success" not in st.session_state:
@@ -301,8 +301,8 @@ with col_ctrl2:
 with col_ctrl3:
     interval = st.slider(
         "Intervalo de polling (segundos)",
-        min_value=30, max_value=300, value=120, step=30,
-        help="Intervalo entre verificações automáticas",
+        min_value=60, max_value=600, value=300, step=60,
+        help="Intervalo entre verificações automáticas (padrão: 5 min)",
     )
 
 # ─── Polling Automático ──────────────────────────────────────────
@@ -311,18 +311,15 @@ st.divider()
 auto_col1, auto_col2 = st.columns([1, 3])
 
 with auto_col1:
-    auto_poll = st.toggle("🔄 Polling Automático", value=False)
+    auto_poll = st.toggle("🔄 Polling Automático", value=True)
 
 with auto_col2:
     if auto_poll:
-        st.info(f"Verificando a cada {interval}s. A página recarrega automaticamente.")
-        # Usar st.empty e loop com rerun
-        placeholder = st.empty()
-        with placeholder:
-            with st.spinner(f"Próxima verificação em {interval}s..."):
-                count = process_emails()
-                if count > 0:
-                    st.toast(f"✅ {count} e-mail(s) processado(s)!")
+        st.info(f"✅ Monitoramento ativo — verificando a cada {interval // 60} min.")
+        with st.spinner(f"Verificando e-mails..."):
+            count = process_emails()
+            if count > 0:
+                st.toast(f"✅ {count} e-mail(s) processado(s)!")
         time.sleep(interval)
         st.rerun()
     else:
